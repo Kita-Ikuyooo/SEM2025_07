@@ -1,0 +1,19 @@
+server:
+  port: 8081 # 用户服务占用 8081 端口
+
+spring:
+  application:
+    name: user-service # 服务名称
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/g07_qa?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: root
+    password: root # 数据库密码
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true # 开启下划线转驼峰 (user_id -> userId)
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl # 开启 SQL 日志打印，方便调试
+  global-config:
+    db-config:
+      id-type: assign_uuid # 默认主键策略为 UUID
