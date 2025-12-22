@@ -1,0 +1,69 @@
+# src/main/resources/application.yml
+server:
+  port: 8081
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: query-service
+
+  # 数据库配置
+  datasource:
+    url: jdbc:mysql://localhost:3306/qa_service?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # JPA配置
+  jpa:
+    hibernate:
+      ddl-auto: update  # 自动创建/更新表
+    show-sql: true      # 显示SQL语句
+    properties:
+      hibernate:
+        format_sql: true
+    # Hibernate 7 中已移除 MySQL8Dialect，统一使用 MySQLDialect
+    database-platform: org.hibernate.dialect.MySQLDialect
+
+# 日志配置
+logging:
+  level:
+    com.g07.queryservice: DEBUG
+    org.springframework.web: INFO
+    com.g07.queryservice.service.AIService: DEBUG
+    org.springframework.web.client.RestTemplate: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# AI配置 - DeepSeek
+ai:
+  provider: deepseek
+  api:
+    url: https://api.deepseek.com
+    key: ${DEEPSEEK_API_KEY:sk-0a86464827814b71a4282f490175d982}
+  model: deepseek-chat  # 或 deepseek-coder
+  max_tokens: 2048
+  temperature: 0.7
+
+  # 超时配置（毫秒）
+  timeout:
+    connect: 5000    # 连接超时
+    read: 30000      # 读取超时
+
+  # 重试配置
+  retry:
+    max-attempts: 3
+    backoff-delay: 1000
+
+  # 回退配置
+  fallback:
+    enabled: true
+    default-message: "抱歉，AI服务暂时不可用，已切换到基础模式。"
+
+  vector-db:
+    url: ${VECTOR_DB_URL:http://localhost:8000}
+    collection: knowledge_base
+
+  # 启用AI功能开关
+  enabled: true
