@@ -31,7 +31,7 @@ public class AuthController {
     private BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
     /**
-     * 登录接口：下发用户信息及 Token
+     * 登录接口：下发用户信息及Token
      */
     @PostMapping("/login")
     public R<Map<String, Object>> login(@RequestBody Map<String, String> body) {
@@ -58,13 +58,15 @@ public class AuthController {
     }
 
     /**
-     * 注册接口：支持加入已有企业或创建新企业
+     * 注册接口：支持加入已有企业或创建新企业，且由用户自主选择角色
      */
     @PostMapping("/register")
     @Transactional
     public R<String> register(@RequestBody Map<String, String> body) {
         String username = body.get("username");
         String tenantName = body.get("tenantName");
+        // 获取前端传来的角色，默认为 viewer
+        String requestedRole = body.getOrDefault("role", "viewer");
 
         // 1. 检查用户名是否已占用
         User existingUser = userMapper.selectOne(new QueryWrapper<User>().eq("username", username));
@@ -73,15 +75,12 @@ public class AuthController {
         }
 
         // 2. 处理企业（租户）逻辑
-        // 尝试根据名称寻找已存在的企业
         Tenant existingTenant = tenantMapper.selectOne(new QueryWrapper<Tenant>().eq("tenant_name", tenantName));
         String targetTenantId;
 
         if (existingTenant != null) {
-            // 场景 A: 企业已存在，获取其 ID，实现“加入企业”
             targetTenantId = existingTenant.getTenantId();
         } else {
-            // 场景 B: 企业不存在，创建新企业
             targetTenantId = UUID.randomUUID().toString().replace("-", "");
             Tenant newTenant = new Tenant();
             newTenant.setTenantId(targetTenantId);
@@ -91,26 +90,26 @@ public class AuthController {
             tenantMapper.insert(newTenant);
         }
 
-        // 3. 创建新用户并绑定到该企业 ID
+        // 3. 创建新用户
         User user = new User();
         user.setUserId(UUID.randomUUID().toString().replace("-", ""));
-        user.setTenantId(targetTenantId); // 关键：同一企业的用户共享此 ID
+        user.setTenantId(targetTenantId);
         user.setUsername(username);
         user.setPasswordHash(encoder.encode(body.get("password")));
         user.setEmail(body.get("email"));
 
-        // ================== 修改点开始 ==================
-        // 判断企业名称是否为 admin，如果是，则设置角色为 admin，否则默认为 researcher
-        if ("admin".equals(tenantName)) {
-            user.setRole("admin");
+        // ================== 修改点：直接使用用户选择的角色 ==================
+        // 简单校验一下，防止非法字符串
+        if ("admin".equals(requestedRole) || "researcher".equals(requestedRole)) {
+            user.setRole(requestedRole);
         } else {
-            user.setRole("researcher");
+            user.setRole("viewer"); // 兜底为普通用户
         }
-        // ================== 修改点结束 ==================
+        // ================================================================
 
         user.setCreateTime(LocalDateTime.now());
         userMapper.insert(user);
 
-        return R.ok(existingTenant != null ? "成功加入企业：" + tenantName : "注册成功，已创建新企业");
+        return R.ok(existingTenant != null ? "成功加入企业" : "注册成功，已创建新企业");
     }
 }

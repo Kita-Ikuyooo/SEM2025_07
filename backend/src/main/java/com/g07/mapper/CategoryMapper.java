@@ -17,6 +17,6 @@ public interface CategoryMapper extends BaseMapper<Category> {
     @Select("SELECT c.*, t.tenant_name " +
             "FROM category c " +
             "LEFT JOIN tenant t ON c.tenant_id = t.tenant_id " +
-            "ORDER BY c.create_time DESC")
+            "ORDER BY c.sort_order ASC, c.create_time DESC")
     List<Category> selectAllWithTenantName();
 }

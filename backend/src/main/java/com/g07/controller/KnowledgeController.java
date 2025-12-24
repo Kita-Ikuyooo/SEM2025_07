@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
 @RestController
@@ -103,6 +104,9 @@ public class KnowledgeController {
         categoryMapper.insert(cat);
 
         User u = userMapper.selectById(userId);
+        if (u == null || "viewer".equals(u.getRole())) {
+            return R.error("权限不足");
+        }
         String username = (u != null) ? u.getUsername() : "unknown";
         recordLog(tenantId, userId, username, "CREATE_FOLDER", name, catId, "新建知识库文件夹");
 
@@ -118,17 +122,63 @@ public class KnowledgeController {
         List<Category> list;
         if ("admin".equals(user.getRole())) {
             list = categoryMapper.selectAllWithTenantName();
-            list.forEach(cat -> {
-                if (cat.getTenantName() != null) {
-                    cat.setName(cat.getName() + " - [" + cat.getTenantName() + "]");
-                }
-            });
         } else {
             QueryWrapper<Category> query = new QueryWrapper<>();
-            query.eq("tenant_id", tenantId).orderByDesc("create_time");
+            query.eq("tenant_id", tenantId);
+            // 【修改】优先按 sort_order 升序，其次按时间
+            query.orderByAsc("sort_order").orderByDesc("create_time");
             list = categoryMapper.selectList(query);
         }
         return R.ok(list);
+    }
+
+    @PostMapping("/category/rename")
+    public R<String> renameCategory(@RequestBody Map<String, String> body,
+                                    @RequestHeader("X-User-Id") String userId) {
+        // 权限校验
+        User u = userMapper.selectById(userId);
+        if (u == null || "viewer".equals(u.getRole())) {
+            return R.error("权限不足");
+        }
+
+        String id = body.get("id");
+        String newName = body.get("name");
+        
+        if (id == null || newName == null) return R.error("参数错误");
+        
+        Category cat = categoryMapper.selectById(id);
+        if (cat == null) return R.error("文件夹不存在");
+
+        cat.setName(newName);
+        categoryMapper.updateById(cat);
+        
+        // 记录简单的审计日志(复用你之前的 recordLog 逻辑，此处简略)
+        // recordLog(..., "RENAME_FOLDER", newName, ...);
+        
+        return R.ok("重命名成功");
+    }
+
+    @PostMapping("/category/reorder")
+    public R<String> reorderCategories(@RequestBody List<String> sortedIds,
+                                       @RequestHeader("X-User-Id") String userId) {
+        // 权限校验
+        User u = userMapper.selectById(userId);
+        if (u == null || "viewer".equals(u.getRole())) {
+            return R.error("权限不足");
+        }
+
+        if (sortedIds == null || sortedIds.isEmpty()) return R.ok("无变化");
+
+        // 简单的循环更新（数量不大时性能可接受）
+        for (int i = 0; i < sortedIds.size(); i++) {
+            String catId = sortedIds.get(i);
+            Category cat = new Category();
+            cat.setId(catId);
+            cat.setSortOrder(i); // 索引即权重，0, 1, 2...
+            categoryMapper.updateById(cat);
+        }
+
+        return R.ok("顺序已保存");
     }
 
     @DeleteMapping("/category/{id}")
@@ -143,6 +193,9 @@ public class KnowledgeController {
         categoryMapper.deleteById(id);
 
         User u = userMapper.selectById(userId);
+        if (u == null || "viewer".equals(u.getRole())) {
+            return R.error("权限不足");
+        }
         String username = (u != null) ? u.getUsername() : "unknown";
         String tenantId = cat.getTenantId();
         
@@ -166,6 +219,10 @@ public class KnowledgeController {
 
         try {
             User u = userMapper.selectById(userId);
+            if (u == null || "viewer".equals(u.getRole())) {
+                return R.error("权限不足");
+            }
+
             String username = (u != null) ? u.getUsername() : "unknown";
 
             Category cat = categoryMapper.selectById(categoryId);

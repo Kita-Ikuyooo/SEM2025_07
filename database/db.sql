@@ -129,6 +129,7 @@ ALTER TABLE `audit_log`
 ADD COLUMN `resource_id` VARCHAR(64) DEFAULT NULL COMMENT '关联资源ID(如doc_id)' AFTER `target_resource`;
 ALTER TABLE `audit_log` ADD COLUMN `username` VARCHAR(50) DEFAULT NULL COMMENT '操作人姓名' AFTER `user_id`;
 
+DROP TABLE IF EXISTS `category`;
 CREATE TABLE `category` (
   `id` varchar(32) NOT NULL COMMENT '分类ID',
   `name` varchar(100) NOT NULL COMMENT '文件夹名称',
@@ -138,5 +139,6 @@ CREATE TABLE `category` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 ALTER TABLE `document` ADD COLUMN `category_id` varchar(32) DEFAULT NULL COMMENT '所属分类ID';
+ALTER TABLE `category` ADD COLUMN `sort_order` INT DEFAULT 0 COMMENT '排序权重(越小越靠前)';
 
 SET FOREIGN_KEY_CHECKS = 1;
